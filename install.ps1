@@ -1,4 +1,4 @@
-# fork du script du Julien Donizel by fdurand1983
+﻿# fork du script du Julien Donizel by fdurand1983
 # --- SÉCURITÉ CONSOLE ET FLUX ---
 function Write-Host { }
 function Write-Output { }
@@ -175,7 +175,8 @@ $StartBtn.Add_Click({
         $PowerToysExe  = "C:\Program Files\PowerToys\PowerToys.exe"
         # Installation de la configuration PowerToys
         # Remplacer l'adresse de téléchargement
-        $ZipUrl        = "../powertoys-config.zip"
+        $ZipUrl        = "https://speedscan.bzh/fichier/powertoys-config.zip"
+        $Simplyurl     = "https://speedscan.bzh/fichier/SimplyKiosk-Setup.exe"
         $ZipPath       = Join-Path $WorkDir "powertoys-config.zip"
         $Extract       = Join-Path $WorkDir "config"
         $targetDir     = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
@@ -184,7 +185,7 @@ $StartBtn.Add_Click({
         # Installation de SimplyKiosk
         # Remplacer l'adresse de téléchargement
         Update-UI "Téléchargement SimplyKiosk-Setup..." $ColorOrange 75
-            Start-BitsTransfer -Source ".." -Destination (Join-Path $targetDir "SimplyKiosk-Setup.exe")
+            Start-BitsTransfer -Source $simplyurl -Destination (Join-Path $targetDir "SimplyKiosk-Setup.exe")
         # Installation de la configuration PowerToys
         Update-UI "Téléchargement Config ZIP..." $ColorOrange 80
             Start-BitsTransfer -Source $ZipUrl -Destination $ZipPath
@@ -204,49 +205,59 @@ $StartBtn.Add_Click({
         Update-UI "Sécurisation AutoRun..." $ColorViolet 90
             Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" -Name "DisableAutoplay" -Value 1
         # 5. Bloquer l'ajout de comptes Microsoft
-        Update-UI "Blocage des comptes Microsoft..." $ColorViolet 95
+        # Update-UI "Blocage des comptes Microsoft..." $ColorViolet 95
             # Méthode 1 : Policies System (Classique)
-            $sysPolicy = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
-            if (!(Test-Path $sysPolicy)) { New-Item -Path $sysPolicy -Force | Out-Null }
-            New-ItemProperty -Path $sysPolicy -Name "NoConnectedUser" -Value 3 -PropertyType DWord -Force | Out-Null
+            # $sysPolicy = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+            # if (!(Test-Path $sysPolicy)) { New-Item -Path $sysPolicy -Force | Out-Null }
+            # New-ItemProperty -Path $sysPolicy -Name "NoConnectedUser" -Value 3 -PropertyType DWord -Force | Out-Null
 
             # Méthode 2 : Policies MicrosoftAccount (Complémentaire efficace)
-            $msPolicy = "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftAccount"
-            if (!(Test-Path $msPolicy)) { New-Item -Path $msPolicy -Force | Out-Null }
-            New-ItemProperty -Path $msPolicy -Name "DisableUserAuth" -Value 1 -PropertyType DWord -Force | Out-Null
+            # $msPolicy = "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftAccount"
+            # if (!(Test-Path $msPolicy)) { New-Item -Path $msPolicy -Force | Out-Null }
+            # New-ItemProperty -Path $msPolicy -Name "DisableUserAuth" -Value 1 -PropertyType DWord -Force | Out-Null
 
             # Méthode 3 : PolicyManager (AllowYourAccount)
-            $pmPath = "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\Settings\AllowYourAccount"
-            if (Test-Path $pmPath) {
-                Set-ItemProperty -Path $pmPath -Name "value" -Value 0 -Force -ErrorAction SilentlyContinue
-            }
+            # $pmPath = "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\Settings\AllowYourAccount"
+            #if (Test-Path $pmPath) {
+            #    Set-ItemProperty -Path $pmPath -Name "value" -Value 0 -Force -ErrorAction SilentlyContinue
+            #}
             
             # Méthode 4 : Désactivation du service d'authentification (Radical)
-            Update-UI "Arrêt du service Microsoft Account..." $ColorViolet 98
-            Stop-Service -Name "wlidsvc" -Force -ErrorAction SilentlyContinue
-            Set-Service -Name "wlidsvc" -StartupType Disabled -ErrorAction SilentlyContinue
+            #Update-UI "Arrêt du service Microsoft Account..." $ColorViolet 98
+            #Stop-Service -Name "wlidsvc" -Force -ErrorAction SilentlyContinue
+            #Set-Service -Name "wlidsvc" -StartupType Disabled -ErrorAction SilentlyContinue
             
             # Méthode 5 : Policy BlockMicrosoftAccount (Complémentaire)
-            $polWinSys = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
-            if (!(Test-Path $polWinSys)) { New-Item -Path $polWinSys -Force | Out-Null }
-            New-ItemProperty -Path $polWinSys -Name "BlockMicrosoftAccount" -Value 1 -PropertyType DWord -Force | Out-Null
+            #$polWinSys = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
+            #if (!(Test-Path $polWinSys)) { New-Item -Path $polWinSys -Force | Out-Null }
+            #New-ItemProperty -Path $polWinSys -Name "BlockMicrosoftAccount" -Value 1 -PropertyType DWord -Force | Out-Null
 
         # 6. Auto-destruction des scripts d'installation
-        Update-UI "Planification du nettoyage post-redémarrage..." $ColorViolet 99
-        # Chemin vers le script ps1 actuel et le script bat qui l'a lancé
-        $ps1Path = $MyInvocation.MyCommand.Path
-        $batPath = Join-Path (Split-Path $ps1Path) "install.bat"
+            Update-UI "Planification du nettoyage post-redémarrage..." $ColorViolet 99
 
-        # On s'assure que les fichiers existent avant de planifier leur suppression
-        if ((Test-Path $ps1Path) -and (Test-Path $batPath)) {
-            # Commande pour supprimer les fichiers après un court délai au prochain démarrage.
-            # Le délai (ping) laisse le temps à la session de s'ouvrir complètement.
-            $command = 'cmd.exe /c "ping 127.0.0.1 -n 10 > nul & del ""{0}"" & del ""{1}"""' -f $ps1Path, $batPath
+            # Utilisation de $PSCommandPath qui est plus fiable dans les scripts récents
+            $ps1Path = $PSCommandPath
+            $scriptDir = Split-Path -Parent $ps1Path
 
-            # Ajout de la commande au registre pour exécution unique à la prochaine connexion de l'utilisateur
-            $runOnceKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
-            Set-ItemProperty -Path $runOnceKey -Name "SimplyKioskCleanup" -Value $command -Force | Out-Null
-        }
+            # Reconstruction sécurisée du chemin du .bat
+            $batPath = Join-Path $scriptDir "install.bat"
+
+            # Vérification que les chemins ne sont pas vides avant de continuer
+            if (![string]::IsNullOrEmpty($ps1Path) -and (Test-Path $ps1Path)) {
+                
+                # On prépare la commande de suppression
+                # Si le .bat n'existe pas, on ne supprime que le .ps1
+                if (Test-Path $batPath) {
+                    $command = 'cmd.exe /c "ping 127.0.0.1 -n 15 > nul & del /f /q ""{0}"" & del /f /q ""{1}"""' -f $ps1Path, $batPath
+                } else {
+                    $command = 'cmd.exe /c "ping 127.0.0.1 -n 15 > nul & del /f /q ""{0}"""' -f $ps1Path
+                }
+
+                # Ajout au registre
+                $runOnceKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
+                if (!(Test-Path $runOnceKey)) { New-Item -Path $runOnceKey -Force | Out-Null }
+                Set-ItemProperty -Path $runOnceKey -Name "SimplyKioskCleanup" -Value $command -Force -ErrorAction SilentlyContinue
+            }
 
         if (Test-Path $PowerToysExe) { Start-Process -FilePath $PowerToysExe }
         # Fin
