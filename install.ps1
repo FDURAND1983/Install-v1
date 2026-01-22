@@ -231,6 +231,23 @@ $StartBtn.Add_Click({
             if (!(Test-Path $polWinSys)) { New-Item -Path $polWinSys -Force | Out-Null }
             New-ItemProperty -Path $polWinSys -Name "BlockMicrosoftAccount" -Value 1 -PropertyType DWord -Force | Out-Null
 
+        # 6. Auto-destruction des scripts d'installation
+        Update-UI "Planification du nettoyage post-redémarrage..." $ColorViolet 99
+        # Chemin vers le script ps1 actuel et le script bat qui l'a lancé
+        $ps1Path = $MyInvocation.MyCommand.Path
+        $batPath = Join-Path (Split-Path $ps1Path) "install.bat"
+
+        # On s'assure que les fichiers existent avant de planifier leur suppression
+        if ((Test-Path $ps1Path) -and (Test-Path $batPath)) {
+            # Commande pour supprimer les fichiers après un court délai au prochain démarrage.
+            # Le délai (ping) laisse le temps à la session de s'ouvrir complètement.
+            $command = 'cmd.exe /c "ping 127.0.0.1 -n 10 > nul & del ""{0}"" & del ""{1}"""' -f $ps1Path, $batPath
+
+            # Ajout de la commande au registre pour exécution unique à la prochaine connexion de l'utilisateur
+            $runOnceKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
+            Set-ItemProperty -Path $runOnceKey -Name "SimplyKioskCleanup" -Value $command -Force | Out-Null
+        }
+
         if (Test-Path $PowerToysExe) { Start-Process -FilePath $PowerToysExe }
         # Fin
         Update-UI "TERMINÉ. Redémarrage dans 5 secondes..." $ColorOrange 100
